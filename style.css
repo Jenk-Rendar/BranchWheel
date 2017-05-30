@@ -38,15 +38,13 @@ polyline{
 }
 
 #pieChartsCol{
-	width: 300px;
+	width: 400px;
 	/*display: -webkit-box;*/
 }
 
 #pieChartsCol .pieChart {
 	width: 100%;
-	height: 250px;
-	display: -webkit-box;
-	border: 1px solid black;
+	height: 300px;
 }
 
 #pieCharts{
@@ -60,4 +58,8 @@ polyline{
 #renderCanvas {
     width: 100%;
     height: 100%;
+}
+
+#piesTitle{
+	font-size: 36px;
 }

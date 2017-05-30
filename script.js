@@ -12,19 +12,19 @@
         var newData = {
           id: getRandomInt(1,10000),
           type: type,
-          status: getRandomInt(1,6)
+          status: "Status " + getRandomInt(1,5)
       }
       dataList.push(newData);
     }    
     return dataList;
   }
 
-  function getRandomInt(min, max) {
-    min = Math.ceil(min);
-    max = Math.floor(max);
-    var randNum = Math.floor(Math.random() * (max - min)) + min;
-    return randNum;
-  }
+  // function getRandomInt(min, max) {
+  //   min = Math.ceil(min);
+  //   max = Math.floor(max);
+  //   var randNum = Math.floor(Math.random() * (max - min)) + min;
+  //   return randNum;
+  // }
 
 //-------------------------------------------------------------------------------------
 
@@ -33,26 +33,32 @@ $(document).ready(function(){
   
   var atmList = randomData("ATM");
   var tellerList = randomData("Teller");
-  var combinedList = atmList.concat(tellerList);
+  var combinedList = tellerList.concat(atmList);
 
   var combinedPieConfig = {
     locationId: "#combinedPie",
+    title: "Branch",
     sortValue: "type",
-    dataList: combinedList
+    dataList: combinedList,
+    curvedLabel: true
   };
   GenerateD3Pie(combinedPieConfig);
 
   var tellerPieConfig = {
     locationId: "#tellerPie",
+    title: "Teller Status",
     sortValue: "status",
-    dataList: tellerList
+    dataList: tellerList,
+    curvedLabel: true
   };
   GenerateD3Pie(tellerPieConfig);
 
   var atmPieConfig = {
     locationId: "#atmPie",
+    title: "Machine Status",
     sortValue: "status",
-    dataList: atmList
+    dataList: atmList,
+    curvedLabel: true
   };  
   GenerateD3Pie(atmPieConfig);
 
