@@ -82,7 +82,7 @@ function CreateBranchWheel(config){
   // Render Atms and Spokes
   for (var c = 1; c <= 360; c += 360 / numberOfAtms ) {
     var circlePositions = calculateCirclingPositions(pillar.position, atmDistanceFromCenter, c);
-    var atm = createATMMesh(scene, atmScale, atmMaterial);
+    var atm = createATMMesh(scene, atmScale, atmMaterial, c.toString());
     var tube = createTube(scene, c, atmTubeMaterial);
     setPillarAnimation(atm, circlePositions, atmAnimationSpeed);
     scene.beginAnimation(atm, 0, 360, true);
@@ -113,40 +113,79 @@ function isNullOrUndefinedObject(object){
   return object === null || object === undefined;
 }
 
-function createATMMesh(scene, scale, material) {
-  var lines = [];
-  lines.push(new BABYLON.Vector3(0.00, 0.00, 0.00));
-  lines.push(new BABYLON.Vector3(0.00, 0.25, 0.00));
-  lines.push(new BABYLON.Vector3(0.10, 0.35, 0.00));
-  lines.push(new BABYLON.Vector3(0.10, 0.55, 0.00));
-  lines.push(new BABYLON.Vector3(0.30, 0.55, 0.00));
-  lines.push(new BABYLON.Vector3(0.30, 0.00, 0.00));
-  lines.push(new BABYLON.Vector3(0.00, 0.00, 0.00));
-  
+function createATMMesh(scene, scale, material, name) {
+    var lines = [];
+    lines.push(new BABYLON.Vector3(0.00, 0.00, 0.00));
+    lines.push(new BABYLON.Vector3(0.00, 0.25, 0.00));
+    lines.push(new BABYLON.Vector3(0.10, 0.35, 0.00));
+    lines.push(new BABYLON.Vector3(0.10, 0.55, 0.00));
+    lines.push(new BABYLON.Vector3(0.30, 0.55, 0.00));
+    lines.push(new BABYLON.Vector3(0.30, 0.00, 0.00));
+    lines.push(new BABYLON.Vector3(0.00, 0.00, 0.00));
+    
 
-  var path = [];
-  path.push(new BABYLON.Vector3(0,0,0));
-  path.push(new BABYLON.Vector3(0.00, 0.00, scale * 0.25));
-  
-  var extrudeScale = scale * 1;
-  var rotation = 0;
-  var atmMesh = BABYLON.Mesh.ExtrudeShape("atmMesh", lines, path, extrudeScale, rotation, BABYLON.Mesh.CAP_ALL, scene, true, 1);
-  atmMesh.setPivotMatrix(BABYLON.Matrix.Translation(scale * -0.15, scale * -0.275, scale * -0.125));
-  atmMesh.rotation.y = Math.PI / -2;
-  atmMesh.material = material;
-  atmMesh.enableEdgesRendering();    
-  atmMesh.edgesWidth = 0.70;
-  atmMesh.edgesColor = new BABYLON.Color4(0, 0.5, 0, 1);
-  
-  var box = BABYLON.MeshBuilder.CreateBox("box", {height: 0.14 * scale, width: 0.17 * scale, depth: 0.014 * scale, updatable: true}, scene);
-  box.position = new BABYLON.Vector3(scale * 0.0, scale * 0.50, scale * 0.12);
-  box.rotation.y = Math.PI / 2;
-  box.material = new BABYLON.StandardMaterial("boxmat", scene);
-  box.material.diffuseColor = BABYLON.Color3.Blue();
-  box.parent = atmMesh;
+    var path = [];
+    path.push(new BABYLON.Vector3(0,0,0));
+    path.push(new BABYLON.Vector3(0.00, 0.00, scale * 0.25));
+    
+    var extrudeScale = scale * 1;
+    var rotation = 0;
+    var atmMesh = BABYLON.Mesh.ExtrudeShape("atmMesh", lines, path, extrudeScale, rotation, BABYLON.Mesh.CAP_ALL, scene, true, 1);
+    atmMesh.setPivotMatrix(BABYLON.Matrix.Translation(scale * -0.15, scale * -0.275, scale * -0.125));
+    atmMesh.material = material;
+    atmMesh.enableEdgesRendering();    
+    atmMesh.edgesWidth = 0.70;
+    atmMesh.edgesColor = new BABYLON.Color4(0, 0.5, 0, 1);
+    
+    //--- screen
+    var box = BABYLON.MeshBuilder.CreateBox("box", {height: 0.14 * scale, width: 0.17 * scale, depth: 0.014 * scale, updatable: true}, scene);
+    box.position = new BABYLON.Vector3(scale * 0.1, scale * 0.45, scale * 0.12);
+    box.rotation.y = Math.PI / 2;
+    box.material = new BABYLON.StandardMaterial("boxmat", scene);
+    box.material.diffuseColor = BABYLON.Color3.Blue();
+    box.parent = atmMesh;
+    
+    //--- nameplate
+    var namePlate = createNamePlate(scene, name, scale);
+    namePlate.position = new BABYLON.Vector3(scale * 0.02, scale * -0.2, scale * 0.13);
+    namePlate.rotation.y = Math.PI / 2;
+    namePlate.parent = atmMesh;
 
-  return atmMesh;
-}
+    atmMesh.rotation.y = Math.PI / -2;
+
+    return atmMesh;
+  }
+
+  function createNamePlate(scene, name, scale) {
+    var textColor = "black";
+    var background = "transparent";
+    var font = "bold 290px helvetica";
+    
+    var namePlate = BABYLON.MeshBuilder.CreatePlane("nameplate_" + name, {width: 0.45, height: 0.225}, scene);
+    namePlate.material = new BABYLON.StandardMaterial("platemat_" + name, scene);
+    //texture size is in pixels
+    var textureWidth = 1024;
+    var textureHeight = textureWidth / 2;
+    var nameTexture = new BABYLON.DynamicTexture("texture_" + name, {width: textureWidth, height: textureHeight } , scene, true);
+    namePlate.material.diffuseTexture = nameTexture;
+    //namePlate.material.specularcolor = new BABYLON.Color3.Black();
+    namePlate.material.backFaceCulling = false;
+    
+    //formattedName = name.replace("/\r?\n|\r/", ".");
+    var yOffset = 256;
+    var charWidth = textureWidth / 6;
+    var charOffset = charWidth / 2;
+    var xOffset = 0;
+    if (name.length < 6) {
+      xOffset = (6 - name.length) * charOffset;
+    }
+
+    //x and y are in pixels
+    namePlate.material.diffuseTexture.drawText(name, xOffset, yOffset, font, textColor, background);
+    namePlate.material.diffuseTexture.hasAlpha = true;
+    return namePlate;
+  }
+
 
 function createTokenBodyMesh(scene, scale) {
   //head
