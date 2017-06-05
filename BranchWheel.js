@@ -62,6 +62,7 @@ function CreateBranchWheel(config){
 
   var tellerScale = 1;
   var tellerAnimationSpeed = 3;
+
   var tellerDistanceFromCenter = atmDistanceFromCenter * 0.75;    
   var tellerPillarOffset = pillarHeight * 0.95;    // Top of pillar
 
@@ -94,7 +95,7 @@ function CreateBranchWheel(config){
   // Render Tellers and Spokes
   for (var x = 1; x <=360; x += 360 / numberOfTellers ) {
     var tellerPositions = calculateCirclingPositions(pillarTop, tellerDistanceFromCenter, x);
-    var teller = createTellerMesh(scene, tellerScale);
+    var teller = createTellerMesh(scene, tellerScale, x.toString());
     var tellerTube = createTube(scene, x, tellerTubeMaterial);
     setPillarAnimation(teller, tellerPositions, tellerAnimationSpeed);
     scene.beginAnimation(teller, 0, 360, true);
@@ -156,16 +157,15 @@ function createATMMesh(scene, scale, material, name) {
     return atmMesh;
   }
 
-  function createNamePlate(scene, name, scale) {
-    var textColor = "black";
-    var background = "transparent";
+  //textColor & background can be text literals or RGB color codes
+  function createNamePlate(scene, name, scale, textColor = "black", background = "transparent") {
     var font = "bold 290px helvetica";
     
-    var namePlate = BABYLON.MeshBuilder.CreatePlane("nameplate_" + name, {width: 0.45, height: 0.225}, scene);
+    var namePlate = BABYLON.MeshBuilder.CreatePlane("nameplate_" + name, {width: 0.45, height: 0.12}, scene);
     namePlate.material = new BABYLON.StandardMaterial("platemat_" + name, scene);
     //texture size is in pixels
     var textureWidth = 1024;
-    var textureHeight = textureWidth / 2;
+    var textureHeight = textureWidth / 4;
     var nameTexture = new BABYLON.DynamicTexture("texture_" + name, {width: textureWidth, height: textureHeight } , scene, true);
     namePlate.material.diffuseTexture = nameTexture;
     //namePlate.material.specularcolor = new BABYLON.Color3.Black();
@@ -187,15 +187,11 @@ function createATMMesh(scene, scale, material, name) {
   }
 
 
-function createTokenBodyMesh(scene, scale) {
-  //head
-  var bodyHeight = scale * 0.2;
-  var diameter = scale * 0.15;
-  
+function createTokenBodyMesh(scene, scale, bodyHeight, diameter) {
   var head = BABYLON.MeshBuilder.CreateSphere("head", {diameter: diameter * 0.8 }, scene);
   var body = BABYLON.MeshBuilder.CreateCylinder("body", {height: bodyHeight, diameter: diameter, tessellation: 12}, scene);
   head.parent = body;
-  body.position = new BABYLON.Vector3(0,1,0);
+  body.position = new BABYLON.Vector3(0,0,0);
   head.position.y += bodyHeight * 0.82 ;
   
   body.material = new BABYLON.StandardMaterial("bodyMat", scene);
@@ -203,14 +199,22 @@ function createTokenBodyMesh(scene, scale) {
   return body;
 }
 
-function createTellerMesh(scene, scale) {
-  var body = createTokenBodyMesh(scene, scale);
+function createTellerMesh(scene, scale, name) {
+  var bodyHeight = scale * 0.2;
+  var bodyDiameter = scale * 0.15;
+  var body = createTokenBodyMesh(scene, scale, bodyHeight, bodyDiameter);
   body.material.diffuseColor = new BABYLON.Color3(18/255, 167/255, 181/255);
+  var namePlate = createNamePlate(scene, name, scale, BABYLON.Color3.Black().toHexString(), body.material.diffuseColor.toHexString());
+  namePlate.position = body.position.clone();
+  namePlate.position.y -= (bodyHeight * scale) + .07 ;
+  namePlate.parent = body;
   return body;
 }
 
 function createCustomerMesh(scene, scale)  {
-  var body = createTokenBodyMesh(scene, scale);
+  var bodyHeight = scale * 0.2;
+  var bodyDiameter = scale * 0.15;  
+  var body = createTokenBodyMesh(scene, scale, bodyHeight, bodyDiameter);
   body.material.diffuseColor = new BABYLON.Color3(201/255,116/255,20/255);
   return body;
 }
