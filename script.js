@@ -71,8 +71,11 @@ $(document).ready(function(){
 
   var branchWheel = CreateBranchWheel(branchWheelConfig);    
 
-  var camera = new BABYLON.FreeCamera('freeCamera', new BABYLON.Vector3(0, 4, -7), scene);
-  camera.setTarget(branchWheel.pillar.position);
+  //var camera = new BABYLON.FreeCamera('freeCamera', new BABYLON.Vector3(0, 5, -10), scene);
+  //camera.setTarget(branchWheel.pillar.position);
+  var camera = new BABYLON.ArcRotateCamera("camera", 0, 0, 0, branchWheel.pillar.position, scene);
+  camera.setPosition(new BABYLON.Vector3(0, 5, -10));
+  camera.attachControl(canvas, true);
   var light = new BABYLON.HemisphericLight('hemiLight', new BABYLON.Vector3(0, 1, 0), scene);
 
   // the canvas/window resize event handler

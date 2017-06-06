@@ -24,6 +24,27 @@ function BranchWheelConfig(_canvasId, _engine, _scene, _atmList, _tellerList) {
   this.tellerList = _tellerList;
 }
 
+//babylon mesh, local nameplate, babylon.vector3 dimensions, string name
+class ATM {
+  constructor(mesh, nameplate, dimensions, name) {
+    this.mesh = mesh;
+    this.nameplate = nameplate;
+    this.dimensions = dimensions;  
+    this.name = name;
+
+  }
+}
+
+class Teller extends ATM {
+}
+
+class Customer {
+  constructor(mesh, dimensions) {
+    this.mesh = mesh;
+    this.dimensions = dimensions;
+  }
+}
+
 /// function CreateBranchWheel(config)
 ///config parameter required contents 
 // canvasId - ?  Maybe not if we pass in the engin from the out side
@@ -52,6 +73,7 @@ function CreateBranchWheel(config){
   var atmTubes = [];
   var tellers = [];
   var tellerTubes = [];
+  var customers = [];
   
   var pillarHeight = 1.5;//0.5; 
 
@@ -62,6 +84,7 @@ function CreateBranchWheel(config){
 
   var tellerScale = 1;
   var tellerAnimationSpeed = 3;
+
   var tellerDistanceFromCenter = atmDistanceFromCenter * 0.75;    
   var tellerPillarOffset = pillarHeight * 0.95;    // Top of pillar
 
@@ -84,20 +107,22 @@ function CreateBranchWheel(config){
     var circlePositions = calculateCirclingPositions(pillar.position, atmDistanceFromCenter, c);
     var atm = createATMMesh(scene, atmScale, atmMaterial, c.toString());
     var tube = createTube(scene, c, atmTubeMaterial);
-    setPillarAnimation(atm, circlePositions, atmAnimationSpeed);
-    scene.beginAnimation(atm, 0, 360, true);
+    setPillarAnimation(atm.mesh, circlePositions, atmAnimationSpeed);
+    scene.beginAnimation(atm.mesh, 0, 360, true);
     scene.beginAnimation(tube, 0, 9, true);
     atms.push(atm);
     atmTubes.push(tube);
+    customers.push(addCustomer(scene, atmScale, atm));
   }
+
   
   // Render Tellers and Spokes
   for (var x = 1; x <=360; x += 360 / numberOfTellers ) {
     var tellerPositions = calculateCirclingPositions(pillarTop, tellerDistanceFromCenter, x);
-    var teller = createTellerMesh(scene, tellerScale);
+    var teller = createTellerMesh(scene, tellerScale, x.toString());
     var tellerTube = createTube(scene, x, tellerTubeMaterial);
-    setPillarAnimation(teller, tellerPositions, tellerAnimationSpeed);
-    scene.beginAnimation(teller, 0, 360, true);
+    setPillarAnimation(teller.mesh, tellerPositions, tellerAnimationSpeed);
+    scene.beginAnimation(teller.mesh, 0, 360, true);
     scene.beginAnimation(tellerTube, 0, 9, true);
     tellers.push(teller);
     tellerTubes.push(tellerTube);
@@ -115,20 +140,25 @@ function isNullOrUndefinedObject(object){
 
 function createATMMesh(scene, scale, material, name) {
     var lines = [];
+    var maxWidth = 0.30;
+    var maxHeight = 0.55;
+    var maxDepth = 0.25;
+    var extrudeScale = scale * 1;
+
     lines.push(new BABYLON.Vector3(0.00, 0.00, 0.00));
     lines.push(new BABYLON.Vector3(0.00, 0.25, 0.00));
     lines.push(new BABYLON.Vector3(0.10, 0.35, 0.00));
-    lines.push(new BABYLON.Vector3(0.10, 0.55, 0.00));
-    lines.push(new BABYLON.Vector3(0.30, 0.55, 0.00));
-    lines.push(new BABYLON.Vector3(0.30, 0.00, 0.00));
+    lines.push(new BABYLON.Vector3(0.10, maxHeight, 0.00));
+    lines.push(new BABYLON.Vector3(maxWidth, maxHeight, 0.00));
+    lines.push(new BABYLON.Vector3(maxWidth, 0.00, 0.00));
     lines.push(new BABYLON.Vector3(0.00, 0.00, 0.00));
     
 
     var path = [];
     path.push(new BABYLON.Vector3(0,0,0));
-    path.push(new BABYLON.Vector3(0.00, 0.00, scale * 0.25));
+    path.push(new BABYLON.Vector3(0.00, 0.00, maxDepth * scale));
     
-    var extrudeScale = scale * 1;
+
     var rotation = 0;
     var atmMesh = BABYLON.Mesh.ExtrudeShape("atmMesh", lines, path, extrudeScale, rotation, BABYLON.Mesh.CAP_ALL, scene, true, 1);
     atmMesh.setPivotMatrix(BABYLON.Matrix.Translation(scale * -0.15, scale * -0.275, scale * -0.125));
@@ -153,19 +183,18 @@ function createATMMesh(scene, scale, material, name) {
 
     atmMesh.rotation.y = Math.PI / -2;
 
-    return atmMesh;
+    return new ATM(atmMesh, namePlate, new BABYLON.Vector3(maxWidth * scale, maxHeight * scale, maxDepth * scale), name);
   }
 
-  function createNamePlate(scene, name, scale) {
-    var textColor = "black";
-    var background = "transparent";
+  //textColor & background can be text literals or RGB color codes
+  function createNamePlate(scene, name, scale, textColor = "black", background = "transparent") {
     var font = "bold 290px helvetica";
     
-    var namePlate = BABYLON.MeshBuilder.CreatePlane("nameplate_" + name, {width: 0.45, height: 0.225}, scene);
+    var namePlate = BABYLON.MeshBuilder.CreatePlane("nameplate_" + name, {width: 0.45, height: 0.12}, scene);
     namePlate.material = new BABYLON.StandardMaterial("platemat_" + name, scene);
     //texture size is in pixels
     var textureWidth = 1024;
-    var textureHeight = textureWidth / 2;
+    var textureHeight = textureWidth / 4;
     var nameTexture = new BABYLON.DynamicTexture("texture_" + name, {width: textureWidth, height: textureHeight } , scene, true);
     namePlate.material.diffuseTexture = nameTexture;
     //namePlate.material.specularcolor = new BABYLON.Color3.Black();
@@ -187,15 +216,11 @@ function createATMMesh(scene, scale, material, name) {
   }
 
 
-function createTokenBodyMesh(scene, scale) {
-  //head
-  var bodyHeight = scale * 0.2;
-  var diameter = scale * 0.15;
-  
+function createTokenBodyMesh(scene, scale, bodyHeight, diameter) {
   var head = BABYLON.MeshBuilder.CreateSphere("head", {diameter: diameter * 0.8 }, scene);
   var body = BABYLON.MeshBuilder.CreateCylinder("body", {height: bodyHeight, diameter: diameter, tessellation: 12}, scene);
   head.parent = body;
-  body.position = new BABYLON.Vector3(0,1,0);
+  body.position = new BABYLON.Vector3(0,0,0);
   head.position.y += bodyHeight * 0.82 ;
   
   body.material = new BABYLON.StandardMaterial("bodyMat", scene);
@@ -203,16 +228,36 @@ function createTokenBodyMesh(scene, scale) {
   return body;
 }
 
-function createTellerMesh(scene, scale) {
-  var body = createTokenBodyMesh(scene, scale);
+function createTellerMesh(scene, scale, name) {
+  var bodyHeight = scale * 0.2;
+  var bodyDiameter = scale * 0.15;
+  var body = createTokenBodyMesh(scene, scale, bodyHeight, bodyDiameter);
   body.material.diffuseColor = new BABYLON.Color3(18/255, 167/255, 181/255);
-  return body;
+  var namePlate = createNamePlate(scene, name, scale, BABYLON.Color3.Black().toHexString(), body.material.diffuseColor.toHexString());
+  namePlate.position = body.position.clone();
+  namePlate.position.y -= (bodyHeight * scale) + .07 ;
+  namePlate.parent = body;
+  return new Teller(body, namePlate, new BABYLON.Vector3(bodyDiameter, bodyHeight, bodyDiameter), name);
 }
 
 function createCustomerMesh(scene, scale)  {
-  var body = createTokenBodyMesh(scene, scale);
+  var bodyHeight = scale * 0.2;
+  var bodyDiameter = scale * 0.15;  
+  var body = createTokenBodyMesh(scene, scale, bodyHeight, bodyDiameter);
   body.material.diffuseColor = new BABYLON.Color3(201/255,116/255,20/255);
-  return body;
+  return new Customer(body, new BABYLON.Vector3(bodyDiameter, bodyHeight, bodyDiameter));
+}
+
+//currently ATMs are rotated 90 degrees, so the customer coordinates are z = x & x = z. 
+//todo fix that.  probably replace ATM with a model or draw the ATM to LH coordinates
+function addCustomer(scene, scale, atm) {
+  var customer = createCustomerMesh(scene, scale);
+  customer.mesh.position = atm.mesh.position.clone();
+  customer.mesh.position.z += atm.dimensions.x * 0.7;
+  customer.mesh.position.x -= .1;
+  customer.mesh.position.y += customer.dimensions.y / 1;
+  customer.mesh.parent = atm.mesh;
+  return customer;
 }
 
 function getAtmMaterial(scene) {
@@ -343,13 +388,13 @@ function hilightMesh(mesh, scene, name) {
   });
 }
 
-function updateTubePositions(centerPosition, spheres, tubes) {
-  if (spheres.length != tubes.length)
-    throw "spheres and tubes must have the same count";
+function updateTubePositions(centerPosition, meshs, tubes) {
+  if (meshs.length != tubes.length)
+    throw "meshs and tubes must have the same count";
 
   var updatedTubes = [];
-  for (var p = 0; p < spheres.length; ++p) {
-    var newPath = [centerPosition, spheres[p].position];
+  for (var p = 0; p < meshs.length; ++p) {
+    var newPath = [centerPosition, meshs[p].mesh.position];
     var updatedTube = BABYLON.MeshBuilder.CreateTube(null, {
       path: newPath,
       instance: tubes[p],
