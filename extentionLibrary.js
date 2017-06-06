@@ -60,9 +60,17 @@ function getRandomInt(min, max) {
 	return randNum;
 }
 
-// function getRandInt(min, max) {
-//     min = Math.ceil(min);
-//     max = Math.floor(max+1);
-//     var randNum = Math.floor(Math.random() * (max - min)) + min;
-//     return randNum;
-// }
+function sumArray(input) {
+             
+	if (toString.call(input) !== "[object Array]")
+    	return false;
+      
+    var total =  0;
+    for(var i=0;i<input.length;i++) {                  
+        if(isNaN(input[i])){
+        	continue;
+        }
+        total += Number(input[i]);
+    }
+    return total;
+}

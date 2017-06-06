@@ -17,14 +17,7 @@
       dataList.push(newData);
     }    
     return dataList;
-  }
-
-  // function getRandomInt(min, max) {
-  //   min = Math.ceil(min);
-  //   max = Math.floor(max);
-  //   var randNum = Math.floor(Math.random() * (max - min)) + min;
-  //   return randNum;
-  // }
+  }  
 
 //-------------------------------------------------------------------------------------
 
@@ -40,7 +33,7 @@ $(document).ready(function(){
     title: "Branch",
     sortValue: "type",
     dataList: combinedList,
-    curvedLabel: true
+    curvedLabel: true 
   };
   GenerateD3Pie(combinedPieConfig);
 
@@ -78,7 +71,7 @@ $(document).ready(function(){
 
   var branchWheel = CreateBranchWheel(branchWheelConfig);    
 
-  var camera = new BABYLON.FreeCamera('freeCamera', new BABYLON.Vector3(0, 5, -10), scene);
+  var camera = new BABYLON.FreeCamera('freeCamera', new BABYLON.Vector3(0, 4, -7), scene);
   camera.setTarget(branchWheel.pillar.position);
   var light = new BABYLON.HemisphericLight('hemiLight', new BABYLON.Vector3(0, 1, 0), scene);
 
@@ -97,9 +90,9 @@ $(document).ready(function(){
 
   //---------------------------------------------
 
-  // d3.select(".randomize")
-  //   .on("click", function(){
-  //     change(randomData());
-  //   });
+  d3.select(".randomize")
+    .on("click", function(){
+      change(randomData());
+    });
 
 }); //end addEventListener
