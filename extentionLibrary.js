@@ -19,9 +19,7 @@ function getRandomColor(id) {
 
 	var PHI = (1 + Math.sqrt(5))/2;
 	var Hue = id * PHI - Math.floor(id * PHI);
-	// var n = id * PHI - Math.floor(id * PHI);
-	// var Hue = Math.floor(n * 256);
-
+	
 	var rgbColorObj =  HSVtoRGB(Hue,Saturation,Brightness);
 	var rgbColor = [rgbColorObj.r,rgbColorObj.g, rgbColorObj.b];
 
@@ -58,6 +56,15 @@ function getRandomInt(min, max) {
 	max = Math.floor(max);
 	var randNum = Math.floor(Math.random() * (max - min)) + min;
 	return randNum;
+}
+
+function getUniqueId(min, max, existingIds){
+	var newId = 0;
+	do {
+	    newId = getRandomInt(min, max);	    
+	}
+	while (existingIds.indexOf(newId) != -1);
+	return newId;
 }
 
 function sumArray(input) {

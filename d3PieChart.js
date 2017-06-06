@@ -168,6 +168,7 @@ function GenerateD3Pie(config){
 //-------------------------------------------------------------------------------------
 
 	var svg = d3.select(pieLocationId)
+		//.data(dataList.types)
 		.data(testDataSet)
 		.append("svg")
 		.append("g")
@@ -244,18 +245,16 @@ function GenerateD3Pie(config){
 		.range(dataSetRange);
 
 	function populateData (){
-		var labels = testDataSet;
+		 var labels = testDataSet;
+		//var labels = dataList.types;
 		return labels.map(function(obj){
 			return { label: obj.type, value: obj.value, data: obj.data};
+			//return { label: obj.name, value: obj.total, data: obj.data};
 		});
 	}
 
 	change(populateData());
 
-	// d3.select(".randomize")
-	// 	.on("click", function(){
-	// 		change(populateData());
-	// 	});
 //-------------------------------------------------------------------------------------
 
 	function change(data) {
