@@ -273,6 +273,7 @@ function addCustomer(scene, scale, atm) {
 }
 
 function removeCustomer(scene, customer) {
+  //fade out
   var fps = 10;
   var animation = new BABYLON.Animation("fadeout", customer.mesh, fps, BABYLON.Animation.ANIMATIONTYPE_FLOAT, BABYLON.Animation.ANIMATIONLOOPMODE_CONSTANT);
 
@@ -285,7 +286,8 @@ function removeCustomer(scene, customer) {
   customer.mesh.animations.push(animation);
   var triggerFrame = 9;
   var noLoop = true;
-  var endEvent = new BABYLON.AnimationEvent(triggerFrame, function() {customer.mesh.destroy(); }, noLoop);
+  //destory mesh after fadeout animation
+  var endEvent = new BABYLON.AnimationEvent(triggerFrame, function() {customer.mesh.destroy(); customer = null; }, noLoop);
   scene.beginAnimation(customer.mesh, 0, 9, false);
   // var frameCount = 10;
   // var valueMin = 1;

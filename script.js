@@ -3,10 +3,10 @@
 //-------------------------------------------------------
 
   // function randomTypeData (type){
-  function randomTypeData (name){
+  function randomTypeData (name, min = 1, max = 50){
     var newTypeList = new GenericTypeList(name);
     var dataList = [];
-    var quantity = getRandomInt(1,50);    
+    var quantity = getRandomInt(min, max);    
     for (var i = 0; i < quantity; i++) {
       var newStatus = "Status " + getRandomInt(1,5);
 
@@ -22,8 +22,8 @@
     return newTypeList;
   }
 
-  function randomData (type){
-    var quantity = getRandomInt(1,50);
+  function randomData (type, min = 1, max = 50){
+    var quantity = getRandomInt(min,max);
     var dataList = [];
     for (var i = 0; i < quantity; i++) {
       var newData = {
@@ -66,8 +66,8 @@ $(document).ready(function(){
     name: "Teller",
   };
   
-  var atmList = randomData("ATM");
-  var tellerList = randomData("Teller");
+  var atmList = randomData("ATM", 10, 40);
+  var tellerList = randomData("Teller", 5, 25);
 
   // var atmList = randomData(atmType);
   // var tellerList = randomData(tellerType);
