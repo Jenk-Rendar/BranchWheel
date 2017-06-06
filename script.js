@@ -1,31 +1,76 @@
 // Code goes here
 
 //-------------------------------------------------------
-  var color = d3.scale.ordinal()
-    .domain(["Lorem ipsum", "dolor sit", "amet", "consectetur", "adipisicing", "elit", "sed", "do", "eiusmod", "tempor", "incididunt"])
-    .range(["#98abc5", "#8a89a6", "#7b6888", "#6b486b", "#a05d56", "#d0743c", "#ff8c00"]);
+
+  // function randomTypeData (type){
+  function randomTypeData (name){
+    var newTypeList = new GenericTypeList(name);
+    var dataList = [];
+    var quantity = getRandomInt(1,50);    
+    for (var i = 0; i < quantity; i++) {
+      var newStatus = "Status " + getRandomInt(1,5);
+
+      var newId = getUniqueId(1,10000, newTypeList.types.map(function(o) { return o.id; }))
+      var newData = new GenericItem(newId, name+"_"+newId, newStatus);
+
+      newTypeList.addTypeData(newStatus,newData);
+      
+
+      dataList.push(newData);
+    }    
+
+    return newTypeList;
+  }
 
   function randomData (type){
     var quantity = getRandomInt(1,50);
     var dataList = [];
     for (var i = 0; i < quantity; i++) {
-        var newData = {
-          id: getRandomInt(1,10000),
-          type: type,
-          status: "Status " + getRandomInt(1,5)
+      var newData = {
+        id: getUniqueId(1,10000, dataList.map(function(o) { return o.id; })),
+        type: type,
+        status: "Status " + getRandomInt(1,5)
       }
       dataList.push(newData);
     }    
     return dataList;
   }  
 
+  function generateTypeData (type, typeList){
+    var typeIdList = typeList.map(function(o) { return o.id; })
+    var newType = {
+      id: getUniqueId(1,100, typeIdList),
+      name: type,
+    };
+    typeList.push(newType);
+    return typeList;
+  }  
+
 //-------------------------------------------------------------------------------------
 
 
 $(document).ready(function(){
+
+  var branchTypes = new GenericTypeList("Branch");
+
+  branchTypes.addTypeData("ATM", randomTypeData("ATM"));
+  branchTypes.addTypeData("Teller", randomTypeData("Teller"));
+
+  var atmType = {
+    id: getUniqueId(1,100, []),
+    name: "ATM",
+  };
+
+  var tellerType = {
+    id: getUniqueId(1,100, [atmType.id]),
+    name: "Teller",
+  };
   
   var atmList = randomData("ATM");
   var tellerList = randomData("Teller");
+
+  // var atmList = randomData(atmType);
+  // var tellerList = randomData(tellerType);
   var combinedList = tellerList.concat(atmList);
 
   var combinedPieConfig = {
@@ -33,6 +78,7 @@ $(document).ready(function(){
     title: "Branch",
     sortValue: "type",
     dataList: combinedList,
+    // dataList: branchTypes,
     curvedLabel: true 
   };
   GenerateD3Pie(combinedPieConfig);
@@ -64,15 +110,10 @@ $(document).ready(function(){
   });
   var scene = new BABYLON.Scene(engine); 
 
-  // var atmList = [{id:1}, {id:2}, {id:3}, {id:4}, {id:5}, {id:6}, {id:7}, {id:8}, {id:9}, {id:10}, {id:11}, {id:12}, {id:13}, {id:14}, {id:15}, {id:16}, {id:17}, {id:18}, {id:19}, {id:20}, {id:21}, {id:22}, {id:23}, {id:24} ];    
-  // var tellerList = [{id:1}, {id:2}, {id:3}, {id:4}, {id:5}, {id:6}, {id:7}, {id:8}, {id:9}, {id:10}, {id:11}, {id:12}];
-
   var branchWheelConfig = new BranchWheelConfig(canvasId, engine, scene, atmList, tellerList);
 
   var branchWheel = CreateBranchWheel(branchWheelConfig);    
 
-  //var camera = new BABYLON.FreeCamera('freeCamera', new BABYLON.Vector3(0, 5, -10), scene);
-  //camera.setTarget(branchWheel.pillar.position);
   var camera = new BABYLON.ArcRotateCamera("camera", 0, 0, 0, branchWheel.pillar.position, scene);
   camera.setPosition(new BABYLON.Vector3(0, 5, -10));
   camera.attachControl(canvas, true);

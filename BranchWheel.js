@@ -176,7 +176,7 @@ function createATMMesh(scene, scale, material, name) {
     box.parent = atmMesh;
     
     //--- nameplate
-    var namePlate = createNamePlate(scene, name, scale);
+    var namePlate = createNamePlate(scene, name, scale, "white");
     namePlate.position = new BABYLON.Vector3(scale * 0.02, scale * -0.2, scale * 0.13);
     namePlate.rotation.y = Math.PI / 2;
     namePlate.parent = atmMesh;
@@ -233,6 +233,7 @@ function createTellerMesh(scene, scale, name) {
   var bodyDiameter = scale * 0.15;
   var body = createTokenBodyMesh(scene, scale, bodyHeight, bodyDiameter);
   body.material.diffuseColor = new BABYLON.Color3(18/255, 167/255, 181/255);
+  // var namePlate = createNamePlate(scene, name, scale, "white");//, body.material.diffuseColor.toHexString());
   var namePlate = createNamePlate(scene, name, scale, BABYLON.Color3.Black().toHexString(), body.material.diffuseColor.toHexString());
   namePlate.position = body.position.clone();
   namePlate.position.y -= (bodyHeight * scale) + .07 ;
