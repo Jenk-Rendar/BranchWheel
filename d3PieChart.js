@@ -4,7 +4,7 @@ function GenerateD3Pie(config){
 
 	var pieTitle = config.title
 	var pieLocationId = config.locationId;
-	var sortValue = config.sortValue;
+	var sortValue = (config.sortValue != undefined)? config.sortValue: "name";
 	var dataList = config.dataList;	
 	var curvedLabel = false;
 	
@@ -16,39 +16,38 @@ function GenerateD3Pie(config){
 	var height = $(pieLocationId).height();
 	var radius = (Math.min(width, height) / 2) * 0.95;
 
-	var testDataSet = [];	
+	var curDataSet = (dataList.types != undefined)? dataList.types : dataList.data[0].types;
 	
-	var uniqueValues = 0;
-	for (var i = 0, l = dataList.length; i < l; i++) { 
-    	var item = dataList[i];
-    	var currentTypeIndex = findIndexOfSetByType(testDataSet, item[sortValue]);
-    	if(currentTypeIndex === -1){
-    		uniqueValues++;
- 	
- 			testDataSet.push({
-				type: item[sortValue],
-				data: [],
-				value : 0,
-				color: getRandomColor(uniqueValues)
-			});
+	// var mappedDataSet = [];	
+	// var uniqueValues = 0;
+	// for (var i = 0, l = curDataSet.length; i < l; i++) { 
+ 	//    	var item = curDataSet[i];
+ 	//    	var currentTypeIndex = findIndexOfSetByType(mappedDataSet, item[sortValue]);
+	//    	if(currentTypeIndex === -1){
+	//    		uniqueValues++;
+ 		
+ 	// 			mappedDataSet.push({
+	// 			type: item[sortValue],
+	// 			data: [],
+	// 			value : 0,
+	// 			color: getRandomColor(item.id)
+	// 		});
+	// 		currentTypeIndex = findIndexOfSetByType(mappedDataSet, item[sortValue]);
+ 	//    	}
 
-			currentTypeIndex = findIndexOfSetByType(testDataSet, item[sortValue]);
-    	}
-
-		var currentTypeIndex = findIndexOfSetByType(testDataSet, item[sortValue]); 
-
-    	testDataSet[currentTypeIndex].data.push(item);
-    	testDataSet[currentTypeIndex].value++;
-	}
+ 	//    	mappedDataSet[currentTypeIndex].data.push(item);
+ 	//    	mappedDataSet[currentTypeIndex].value = item.total();
+	// }
 
 	function findIndexOfSetByType(dataSet, type){
 		var types = dataSet.map(function(o) { return o.type; });
 		return types.indexOf(type);
 	}
 
-	var dataSetTotal = sumArray(testDataSet.map(function(o) { return o.value; }));
-	var dataSetDomain = testDataSet.map(function(o) { return o.type; });
-	var dataSetRange = testDataSet.map(function(o) { return o.color; });
+	var dataSetTotal = dataList.total();
+	var dataSetDomain = curDataSet.map(function(o) { return o.name; });
+	var dataSetRange = curDataSet.map(function(o) { return getRandomColor(o.id); });
+
 	var pieSpecificId = pieLocationId.replaceAll("#","").replaceAll(".","").replaceAll(" ","");
 
 	//dataList = dataList.sort(compare);
@@ -168,8 +167,8 @@ function GenerateD3Pie(config){
 //-------------------------------------------------------------------------------------
 
 	var svg = d3.select(pieLocationId)
-		//.data(dataList.types)
-		.data(testDataSet)
+		// .data(mappedDataSet)
+		.data(curDataSet)
 		.append("svg")
 		.append("g")
 		.attr("class", "donut");
@@ -178,11 +177,6 @@ function GenerateD3Pie(config){
 		.attr("class", "slices");
 	svg.append("g")
 		.attr("class", "labels");
-
-	// svg.append("g").attr("class", "pieChartTitle")
-	// 	.append("text")
-	// 	.attr("text-anchor", "middle")   		
- //   		.text(pieTitle);	
 
 //----------------CENTER CIRCLE----------------------   
 	
@@ -198,9 +192,7 @@ function GenerateD3Pie(config){
             .attr('text-anchor', 'middle')
             .style('font-weight', 'bold')
             .text(pieTitle);
-            // .text(function(d, i) {
-            //     return d.type;
-            // });
+
     svg.append('text')
             .attr('class', 'center-txt value')
             .attr('text-anchor', 'middle');
@@ -224,9 +216,6 @@ function GenerateD3Pie(config){
 		// .innerRadius(radius * 0.4);
 		.innerRadius(radius * 0.7)
         .outerRadius(radius * 0.9);
-        // .outerRadius(function() {
-        //     return (d3.select(this).classed('clicked'))? radius * 0.9 : radius *0.7; 
-        // });
 
 	var outerArc = d3.svg.arc()
 		.innerRadius(radius * 0.9)
@@ -245,11 +234,11 @@ function GenerateD3Pie(config){
 		.range(dataSetRange);
 
 	function populateData (){
-		 var labels = testDataSet;
-		//var labels = dataList.types;
+		// var labels = mappedDataSet;
+		var labels = curDataSet;
 		return labels.map(function(obj){
-			return { label: obj.type, value: obj.value, data: obj.data};
-			//return { label: obj.name, value: obj.total, data: obj.data};
+			// return { label: obj.type, value: obj.value, data: obj.data};
+			return { label: obj.name, value: obj.total(), data: obj.data};
 		});
 	}
 

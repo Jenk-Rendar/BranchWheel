@@ -46,6 +46,24 @@
     return typeList;
   }  
 
+  function mapDataToBranchWheel(genericDataMap){
+
+    var atmData = genericDataMap.getTypeByName("ATM").data[0].types.map(function(t,i){ return t.data.map(function(o,j){ return o;});});
+    var tellerData = genericDataMap.getTypeByName("Teller").data[0].types.map(function(t,i){ return t.data.map(function(o,j){ return o;});});
+
+    var atms = [].concat.apply([], atmData);
+    var tellers = [].concat.apply([], tellerData);
+
+    var newBranchWheelData = {
+      id: genericDataMap.id,
+      name: genericDataMap.name,
+      atms: atms,
+      tellers: tellers,
+    }
+
+    return newBranchWheelData;
+  }
+
 //-------------------------------------------------------------------------------------
 
 
@@ -53,32 +71,14 @@ $(document).ready(function(){
 
   var branchTypes = new GenericTypeList("Branch");
 
-  branchTypes.addTypeData("ATM", randomTypeData("ATM"));
   branchTypes.addTypeData("Teller", randomTypeData("Teller"));
-
-  var atmType = {
-    id: getUniqueId(1,100, []),
-    name: "ATM",
-  };
-
-  var tellerType = {
-    id: getUniqueId(1,100, [atmType.id]),
-    name: "Teller",
-  };
-  
-  var atmList = randomData("ATM");
-  var tellerList = randomData("Teller");
-
-  // var atmList = randomData(atmType);
-  // var tellerList = randomData(tellerType);
-  var combinedList = tellerList.concat(atmList);
+  branchTypes.addTypeData("ATM", randomTypeData("ATM"));
 
   var combinedPieConfig = {
     locationId: "#combinedPie",
     title: "Branch",
-    sortValue: "type",
-    dataList: combinedList,
-    // dataList: branchTypes,
+    sortValue: "name", // default is "name"
+    dataList: branchTypes,
     curvedLabel: true 
   };
   GenerateD3Pie(combinedPieConfig);
@@ -86,8 +86,8 @@ $(document).ready(function(){
   var tellerPieConfig = {
     locationId: "#tellerPie",
     title: "Teller Status",
-    sortValue: "status",
-    dataList: tellerList,
+    sortValue: "name", // default is "name"
+    dataList: branchTypes.getTypeByName("Teller"),
     curvedLabel: true
   };
   GenerateD3Pie(tellerPieConfig);
@@ -95,8 +95,8 @@ $(document).ready(function(){
   var atmPieConfig = {
     locationId: "#atmPie",
     title: "Machine Status",
-    sortValue: "status",
-    dataList: atmList,
+    sortValue: "name", // default is "name"
+    dataList: branchTypes.getTypeByName("ATM"),
     curvedLabel: true
   };  
   GenerateD3Pie(atmPieConfig);
@@ -110,7 +110,9 @@ $(document).ready(function(){
   });
   var scene = new BABYLON.Scene(engine); 
 
-  var branchWheelConfig = new BranchWheelConfig(canvasId, engine, scene, atmList, tellerList);
+  var branchWheelData = mapDataToBranchWheel(branchTypes);
+
+  var branchWheelConfig = new BranchWheelConfig(canvasId, engine, scene, branchWheelData.atms, branchWheelData.tellers);  
 
   var branchWheel = CreateBranchWheel(branchWheelConfig);    
 
