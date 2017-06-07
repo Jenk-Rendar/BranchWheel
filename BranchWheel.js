@@ -102,6 +102,7 @@ function CreateBranchWheel(config){
   var tellerTubeMaterial = getTellerTubeMaterial(scene);
   var atmMaterial = getAtmMaterial(scene);
   
+
   // Render Atms and Spokes
   for (var c = 1; c <= 360; c += 360 / numberOfAtms ) {
     var circlePositions = calculateCirclingPositions(pillar.position, atmDistanceFromCenter, c);
@@ -223,9 +224,10 @@ function createTokenBodyMesh(scene, scale, bodyHeight, diameter) {
   body.position = new BABYLON.Vector3(0,0,0);
   head.position.y += bodyHeight * 0.82 ;
   
-  body.material = new BABYLON.StandardMaterial("bodyMat", scene);
-  head.material = body.material;
-  return body;
+  var joinedMesh = BABYLON.Mesh.MergeMeshes([body, head]);
+
+  joinedMesh.material = new BABYLON.StandardMaterial("bodyMat", scene);
+  return joinedMesh;
 }
 
 function createTellerMesh(scene, scale, name) {
@@ -258,7 +260,40 @@ function addCustomer(scene, scale, atm) {
   customer.mesh.position.x -= .1;
   customer.mesh.position.y += customer.dimensions.y / 1;
   customer.mesh.parent = atm.mesh;
+  customer.mesh.material.hasAlpha = true;
+
+  //fade in
+  var fps = 10;
+  var frameCount = 10;
+  var valueMin = .1;
+  var valueMax = 1;
+  var loopAnimation = false;
+  BABYLON.Animation.CreateAndStartAnimation("fadein", customer.mesh, 'visibility', fps, frameCount, valueMin, valueMax, loopAnimation);
   return customer;
+}
+
+function removeCustomer(scene, customer) {
+  //fade out
+  var fps = 10;
+  var animation = new BABYLON.Animation("fadeout", customer.mesh, fps, BABYLON.Animation.ANIMATIONTYPE_FLOAT, BABYLON.Animation.ANIMATIONLOOPMODE_CONSTANT);
+
+  var keys = [];
+  for (var x = 1; x <= 10; ++x)
+    keys.push({ frame: x - 1, value: x / 10 });
+
+  animation.setKeys(keys);
+  customer.mesh.animations = [];
+  customer.mesh.animations.push(animation);
+  var triggerFrame = 9;
+  var noLoop = true;
+  //destory mesh after fadeout animation
+  var endEvent = new BABYLON.AnimationEvent(triggerFrame, function() {customer.mesh.destroy(); customer = null; }, noLoop);
+  scene.beginAnimation(customer.mesh, 0, 9, false);
+  // var frameCount = 10;
+  // var valueMin = 1;
+  // var valueMax = .1;
+  // var loopAnimation = false;
+  // BABYLON.Animation.CreateAndStartAnimation("fadein", customer.mesh, 'visibility', fps, frameCount, valueMin, valueMax, loopAnimation);
 }
 
 function getAtmMaterial(scene) {
