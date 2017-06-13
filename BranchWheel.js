@@ -1,13 +1,25 @@
 // function BranchWheel(_canvasId, _engine, _pillar, _scene, _atms, _atmTubes, _tellers, _tellerTubes) {
-  function BranchWheel(_canvasId, _pillar, _atms, _atmTubes, _tellers, _tellerTubes) {
-  this.canvasId = _canvasId;
-  //this.engine = _engine;    
-  this.pillar = _pillar;
-  //this.scene = _scene;
-  this.atms = _atms;
-  this.atmTubes = _atmTubes;
-  this.tellers = _tellers;
-  this.tellerTubes = _tellerTubes;
+class BranchWheel {
+  constructor(_canvasId, _pillar, _atms, _atmTubes, _tellers, _tellerTubes) {
+    this.canvasId = _canvasId;
+    //this.engine = _engine;    
+    this.pillar = _pillar;
+    //this.scene = _scene;
+    this.atms = _atms;
+    this.atmTubes = _atmTubes;
+    this.tellers = _tellers;
+    this.tellerTubes = _tellerTubes;
+  }
+
+  frameUpdate() {
+    for (var i = this.atms.length - 1; i >= 0; i--) {
+      this.atms[i].frameUpdate();
+    }
+
+    for (var i = this.tellers.length - 1; i >= 0; i--) {
+      this.tellers[i].frameUpdate();
+    }
+  }
 }
 
 function BranchWheelPillar(_position, _pillarTop, _pillarBottom) {
@@ -24,18 +36,163 @@ function BranchWheelConfig(_canvasId, _engine, _scene, _atmList, _tellerList) {
   this.tellerList = _tellerList;
 }
 
-//babylon mesh, local nameplate, babylon.vector3 dimensions, string name
-class ATM {
-  constructor(mesh, nameplate, dimensions, name) {
-    this.mesh = mesh;
-    this.nameplate = nameplate;
-    this.dimensions = dimensions;  
-    this.name = name;
+//abstract base class for ATM & Teller
+class CirclingObject {
 
+  constructor(scene) {
+    this.scene = scene;
+    this.mesh = null;
+    this.tube = null;
+    this.positions = null;
+    this.tubeEndPoint = null;
+  }
+
+  setCirclePosition(centerPosition, radius, startingDegree, fps, tubeEndPoint) {
+    if (tubeEndPoint === null)
+        tubeEndPoint = centerPosition;
+
+    this.tubeEndPoint = tubeEndPoint;
+
+
+    // calculate positions
+    this.positions = calculateCirclingPositions(centerPosition, radius, startingDegree);
+
+    //apply animation for positions
+    var animation = new BABYLON.Animation("circlingAnimation" + this.name, "position", fps, BABYLON.Animation.ANIMATIONTYPE_VECTOR3, BABYLON.Animation.ANIMATIONLOOPMODE_CYCLE);
+    var keys = [];
+    
+    for (var p = 0; p < this.positions.length; ++p) {
+      keys.push({
+        frame: p,
+        value: this.positions[p]
+      });
+
+    }
+    
+    animation.setKeys(keys);
+
+    this.mesh.animations = [];
+    this.mesh.animations.push(animation);
+  }
+
+  startCircling() {
+    this.scene.beginAnimation(this.mesh, 0, this.positions.length - 1, true);
+  }
+
+  stopCircling() {
+    this.scene.stopAnimation(this.mesh);
+  }
+
+  // called to update on a new frame.
+  frameUpdate() {
+    this.tube.updatePath([this.tubeEndPoint, this.mesh.position]);
   }
 }
 
-class Teller extends ATM {
+//babylon mesh, local nameplate, babylon.vector3 dimensions, string name
+class ATM extends CirclingObject {
+  constructor(name, scale, scene, atmMaterial, tubeMaterial) {
+    super(scene);
+    this.name = name;
+    this.scene = scene;
+
+    //create ATM mesh
+    var meshBundle = this.createATMMesh(scene, scale, atmMaterial, name);
+    this.mesh = meshBundle.mesh;
+    this.dimensions = meshBundle.dimensions;
+    this.nameplate = this.createATMNameplate(this.mesh, scene, name + "_np", scale, "white");
+    //rotate after nameplate for happy geometry
+    this.mesh.rotation.y = Math.PI / -2;
+
+    //create tube
+    var zeroPath = [BABYLON.Vector3.Zero(), BABYLON.Vector3.Zero()];
+    this.tube = new Tube(tubeMaterial, zeroPath, scene, name + "_atmtube");
+    this.tube.startColorAnimation();
+  }
+
+  createATMNameplate(atmMesh, scene, name, scale, color) {
+    var namePlate = createNamePlate(scene, name, scale, color);
+    namePlate.position = new BABYLON.Vector3(scale * 0.02, scale * -0.2, scale * 0.13);
+    namePlate.rotation.y = Math.PI / 2;
+    namePlate.parent = atmMesh;
+    return namePlate;
+  }
+
+  createATMMesh(scene, scale, material, name) {
+    var lines = [];
+    var maxWidth = 0.30;
+    var maxHeight = 0.55;
+    var maxDepth = 0.25;
+    var extrudeScale = scale * 1;
+
+    lines.push(new BABYLON.Vector3(0.00, 0.00, 0.00));
+    lines.push(new BABYLON.Vector3(0.00, 0.25, 0.00));
+    lines.push(new BABYLON.Vector3(0.10, 0.35, 0.00));
+    lines.push(new BABYLON.Vector3(0.10, maxHeight, 0.00));
+    lines.push(new BABYLON.Vector3(maxWidth, maxHeight, 0.00));
+    lines.push(new BABYLON.Vector3(maxWidth, 0.00, 0.00));
+    lines.push(new BABYLON.Vector3(0.00, 0.00, 0.00));
+    
+
+    var path = [];
+    path.push(new BABYLON.Vector3(0,0,0));
+    path.push(new BABYLON.Vector3(0.00, 0.00, maxDepth * scale));
+    
+
+    var rotation = 0;
+    var atmMesh = BABYLON.Mesh.ExtrudeShape("atmMesh", lines, path, extrudeScale, rotation, BABYLON.Mesh.CAP_ALL, scene, true, 1);
+    atmMesh.setPivotMatrix(BABYLON.Matrix.Translation(scale * -0.15, scale * -0.275, scale * -0.125));
+    atmMesh.material = material;
+    atmMesh.enableEdgesRendering();    
+    atmMesh.edgesWidth = 0.70;
+    atmMesh.edgesColor = new BABYLON.Color4(0, 0.5, 0, 1);
+    
+    //--- screen
+    var box = BABYLON.MeshBuilder.CreateBox("box", {height: 0.14 * scale, width: 0.17 * scale, depth: 0.014 * scale, updatable: true}, scene);
+    box.position = new BABYLON.Vector3(scale * 0.1, scale * 0.45, scale * 0.12);
+    box.rotation.y = Math.PI / 2;
+    box.material = new BABYLON.StandardMaterial("boxmat", scene);
+    box.material.diffuseColor = BABYLON.Color3.Blue();
+    box.parent = atmMesh;
+    
+    return {mesh: atmMesh, dimensions: new BABYLON.Vector3(maxWidth * scale, maxHeight * scale, maxDepth * scale)};
+  }
+}
+
+class Teller extends CirclingObject {
+  constructor(scene, scale, name, tubeMaterial) {
+    super(scene);
+    this.name = name;
+    this.tellerColor = new BABYLON.Color3(18/255, 167/255, 181/255);
+    this.bodyHeight = scale * 0.2;
+    this.bodyDiameter = scale * 0.15;
+    this.dimensions = new BABYLON.Vector3(this.bodyDiameter, this.bodyHeight, this.bodyDiameter);
+
+    //mesh
+    this.mesh = this.createTellerMesh(scene, scale, name);
+    
+    //nameplate
+    this.namePlate = this.createTellerNameplate(scene, name + "_np", scale);
+    this.namePlate.parent = this.mesh;
+
+    //tube
+    var zeroPath = [BABYLON.Vector3.Zero(), BABYLON.Vector3.Zero()];
+    this.tube = new Tube(tubeMaterial, zeroPath, scene, name + "_tellertube");
+    this.tube.startColorAnimation();
+  }
+
+  createTellerMesh(scene, scale, name) {
+    var body = createTokenBodyMesh(scene, scale, this.bodyHeight, this.bodyDiameter);
+    body.material.diffuseColor = this.tellerColor;
+    return body;
+  }
+
+  createTellerNameplate(scene, name, scale) {
+    var namePlate = createNamePlate(scene, name, scale, BABYLON.Color3.Black().toHexString(), this.tellerColor.toHexString());
+    namePlate.position = this.mesh.position.clone();
+    namePlate.position.y -= (this.bodyHeight * scale) + .07;
+    return namePlate;
+  }  
 }
 
 class Customer {
@@ -44,6 +201,70 @@ class Customer {
     this.dimensions = dimensions;
   }
 }
+
+class Tube {
+  constructor(material, path, scene, name) {
+    this.radius = 0.015;
+    this.tesselation = 3;
+    this.name = name;
+    this.scene = scene;
+    this.maxColorAnimationFrame = 8;
+
+    var tube = BABYLON.MeshBuilder.CreateTube(name, {
+      path: path,
+      cap: BABYLON.Mesh.NO_CAP,
+      radius: this.radius,
+      tesselation: this.tesselation,
+      updatable: true
+      }, 
+      this.scene);
+
+    tube.material = material;
+    var colorAnimation = new BABYLON.Animation("tubecolorcycle_" + name, "material.diffuseColor", 4, BABYLON.Animation.ANIMATIONTYPE_COLOR3, BABYLON.Animation.ANIMATIONLOOPMODE_CYCLE);
+    var colorFrames = [];
+    var switchColorDirection =  false;
+    //var color = 6;
+    var color = material.diffuseColor.clone();
+
+    for (var pos = 0; pos <= this.maxColorAnimationFrame; pos++) {
+      colorFrames.push( { frame: (pos), value: color.clone()});
+      
+      if (pos === 4)
+        switchColorDirection = true;
+      
+      if (switchColorDirection) {
+       color = color.scale(0.9);
+      }
+      else {
+        color = color.scale(1.1);
+      }
+    }
+
+    colorAnimation.setKeys(colorFrames);
+    tube.animations = [];
+    tube.animations.push(colorAnimation);
+    this.mesh = tube;
+  }
+
+  startColorAnimation() {
+    this.scene.beginAnimation(this.mesh, 0, this.maxColorAnimationFrame, true);
+  }
+
+  stopColorAnimation() {
+    this.scene.stopAnimation(this.mesh);
+  }
+
+  //takes an array of BABYLON.Vector3 to define the path
+  updatePath(newPath) {
+      BABYLON.MeshBuilder.CreateTube(null, {
+      path: newPath,
+      instance: this.mesh,
+      cap: BABYLON.Mesh.NO_CAP,
+      radius: this.radius,
+      tesselation: this.tesselation
+    });
+  }
+} //end class Tube
 
 /// function CreateBranchWheel(config)
 ///config parameter required contents 
@@ -105,28 +326,33 @@ function CreateBranchWheel(config){
 
   // Render Atms and Spokes
   for (var c = 1; c <= 360; c += 360 / numberOfAtms ) {
-    var circlePositions = calculateCirclingPositions(pillar.position, atmDistanceFromCenter, c);
-    var atm = createATMMesh(scene, atmScale, atmMaterial, c.toString());
-    var tube = createTube(scene, c, atmTubeMaterial);
-    setPillarAnimation(atm.mesh, circlePositions, atmAnimationSpeed);
-    scene.beginAnimation(atm.mesh, 0, 360, true);
-    scene.beginAnimation(tube, 0, 9, true);
+    //var circlePositions = calculateCirclingPositions(pillar.position, atmDistanceFromCenter, c);
+    var atm = new ATM(c.toString(), atmScale, scene, atmMaterial, atmTubeMaterial);
+    //var tube = createTube(scene, c, atmTubeMaterial);
+    //setCirclingAnimation(atm.mesh, circlePositions, atmAnimationSpeed);
+    //scene.beginAnimation(atm.mesh, 0, 360, true);
+    //scene.beginAnimation(tube, 0, 9, true);
+    atm.setCirclePosition(pillar.position, atmDistanceFromCenter, c, atmAnimationSpeed, pillarBottom);
+    atm.startCircling();
     atms.push(atm);
-    atmTubes.push(tube);
-    customers.push(addCustomer(scene, atmScale, atm));
+    //atmTubes.push(tube);
+    //customers.push(addCustomer(scene, atmScale, atm));
   }
 
   
   // Render Tellers and Spokes
   for (var x = 1; x <=360; x += 360 / numberOfTellers ) {
-    var tellerPositions = calculateCirclingPositions(pillarTop, tellerDistanceFromCenter, x);
-    var teller = createTellerMesh(scene, tellerScale, x.toString());
-    var tellerTube = createTube(scene, x, tellerTubeMaterial);
-    setPillarAnimation(teller.mesh, tellerPositions, tellerAnimationSpeed);
-    scene.beginAnimation(teller.mesh, 0, 360, true);
-    scene.beginAnimation(tellerTube, 0, 9, true);
+//    var tellerPositions = calculateCirclingPositions(pillarTop, tellerDistanceFromCenter, x);
+//    var teller = createTellerMesh(scene, tellerScale, x.toString());
+      var teller = new Teller(scene, tellerScale, x.toString(), tellerTubeMaterial);
+//    var tellerTube = createTube(scene, x, tellerTubeMaterial);
+//    setCirclingAnimation(teller.mesh, tellerPositions, tellerAnimationSpeed);
+//    scene.beginAnimation(teller.mesh, 0, 360, true);
+//    scene.beginAnimation(tellerTube, 0, 9, true);
+    teller.setCirclePosition(pillarTop, tellerDistanceFromCenter, x, tellerAnimationSpeed, pillarTop);
+    teller.startCircling();
     tellers.push(teller);
-    tellerTubes.push(tellerTube);
+//    tellerTubes.push(tellerTube);
   }
 
   var pillarData = new BranchWheelPillar(pillar.position, pillarTop, pillarBottom);
@@ -139,53 +365,53 @@ function isNullOrUndefinedObject(object){
   return object === null || object === undefined;
 }
 
-function createATMMesh(scene, scale, material, name) {
-    var lines = [];
-    var maxWidth = 0.30;
-    var maxHeight = 0.55;
-    var maxDepth = 0.25;
-    var extrudeScale = scale * 1;
+// function createATMMesh(scene, scale, material, name) {
+//     var lines = [];
+//     var maxWidth = 0.30;
+//     var maxHeight = 0.55;
+//     var maxDepth = 0.25;
+//     var extrudeScale = scale * 1;
 
-    lines.push(new BABYLON.Vector3(0.00, 0.00, 0.00));
-    lines.push(new BABYLON.Vector3(0.00, 0.25, 0.00));
-    lines.push(new BABYLON.Vector3(0.10, 0.35, 0.00));
-    lines.push(new BABYLON.Vector3(0.10, maxHeight, 0.00));
-    lines.push(new BABYLON.Vector3(maxWidth, maxHeight, 0.00));
-    lines.push(new BABYLON.Vector3(maxWidth, 0.00, 0.00));
-    lines.push(new BABYLON.Vector3(0.00, 0.00, 0.00));
+//     lines.push(new BABYLON.Vector3(0.00, 0.00, 0.00));
+//     lines.push(new BABYLON.Vector3(0.00, 0.25, 0.00));
+//     lines.push(new BABYLON.Vector3(0.10, 0.35, 0.00));
+//     lines.push(new BABYLON.Vector3(0.10, maxHeight, 0.00));
+//     lines.push(new BABYLON.Vector3(maxWidth, maxHeight, 0.00));
+//     lines.push(new BABYLON.Vector3(maxWidth, 0.00, 0.00));
+//     lines.push(new BABYLON.Vector3(0.00, 0.00, 0.00));
     
 
-    var path = [];
-    path.push(new BABYLON.Vector3(0,0,0));
-    path.push(new BABYLON.Vector3(0.00, 0.00, maxDepth * scale));
+//     var path = [];
+//     path.push(new BABYLON.Vector3(0,0,0));
+//     path.push(new BABYLON.Vector3(0.00, 0.00, maxDepth * scale));
     
 
-    var rotation = 0;
-    var atmMesh = BABYLON.Mesh.ExtrudeShape("atmMesh", lines, path, extrudeScale, rotation, BABYLON.Mesh.CAP_ALL, scene, true, 1);
-    atmMesh.setPivotMatrix(BABYLON.Matrix.Translation(scale * -0.15, scale * -0.275, scale * -0.125));
-    atmMesh.material = material;
-    atmMesh.enableEdgesRendering();    
-    atmMesh.edgesWidth = 0.70;
-    atmMesh.edgesColor = new BABYLON.Color4(0, 0.5, 0, 1);
+//     var rotation = 0;
+//     var atmMesh = BABYLON.Mesh.ExtrudeShape("atmMesh", lines, path, extrudeScale, rotation, BABYLON.Mesh.CAP_ALL, scene, true, 1);
+//     atmMesh.setPivotMatrix(BABYLON.Matrix.Translation(scale * -0.15, scale * -0.275, scale * -0.125));
+//     atmMesh.material = material;
+//     atmMesh.enableEdgesRendering();    
+//     atmMesh.edgesWidth = 0.70;
+//     atmMesh.edgesColor = new BABYLON.Color4(0, 0.5, 0, 1);
     
-    //--- screen
-    var box = BABYLON.MeshBuilder.CreateBox("box", {height: 0.14 * scale, width: 0.17 * scale, depth: 0.014 * scale, updatable: true}, scene);
-    box.position = new BABYLON.Vector3(scale * 0.1, scale * 0.45, scale * 0.12);
-    box.rotation.y = Math.PI / 2;
-    box.material = new BABYLON.StandardMaterial("boxmat", scene);
-    box.material.diffuseColor = BABYLON.Color3.Blue();
-    box.parent = atmMesh;
+//     //--- screen
+//     var box = BABYLON.MeshBuilder.CreateBox("box", {height: 0.14 * scale, width: 0.17 * scale, depth: 0.014 * scale, updatable: true}, scene);
+//     box.position = new BABYLON.Vector3(scale * 0.1, scale * 0.45, scale * 0.12);
+//     box.rotation.y = Math.PI / 2;
+//     box.material = new BABYLON.StandardMaterial("boxmat", scene);
+//     box.material.diffuseColor = BABYLON.Color3.Blue();
+//     box.parent = atmMesh;
     
-    //--- nameplate
-    var namePlate = createNamePlate(scene, name, scale, "white");
-    namePlate.position = new BABYLON.Vector3(scale * 0.02, scale * -0.2, scale * 0.13);
-    namePlate.rotation.y = Math.PI / 2;
-    namePlate.parent = atmMesh;
+//     //--- nameplate
+//     var namePlate = createNamePlate(scene, name, scale, "white");
+//     namePlate.position = new BABYLON.Vector3(scale * 0.02, scale * -0.2, scale * 0.13);
+//     namePlate.rotation.y = Math.PI / 2;
+//     namePlate.parent = atmMesh;
 
-    atmMesh.rotation.y = Math.PI / -2;
+//     atmMesh.rotation.y = Math.PI / -2;
 
-    return new ATM(atmMesh, namePlate, new BABYLON.Vector3(maxWidth * scale, maxHeight * scale, maxDepth * scale), name);
-  }
+//     return new ATM(atmMesh, namePlate, new BABYLON.Vector3(maxWidth * scale, maxHeight * scale, maxDepth * scale), name);
+//   }
 
   //textColor & background can be text literals or RGB color codes
   function createNamePlate(scene, name, scale, textColor = "black", background = "transparent") {
@@ -230,18 +456,17 @@ function createTokenBodyMesh(scene, scale, bodyHeight, diameter) {
   return joinedMesh;
 }
 
-function createTellerMesh(scene, scale, name) {
-  var bodyHeight = scale * 0.2;
-  var bodyDiameter = scale * 0.15;
-  var body = createTokenBodyMesh(scene, scale, bodyHeight, bodyDiameter);
-  body.material.diffuseColor = new BABYLON.Color3(18/255, 167/255, 181/255);
-  // var namePlate = createNamePlate(scene, name, scale, "white");//, body.material.diffuseColor.toHexString());
-  var namePlate = createNamePlate(scene, name, scale, BABYLON.Color3.Black().toHexString(), body.material.diffuseColor.toHexString());
-  namePlate.position = body.position.clone();
-  namePlate.position.y -= (bodyHeight * scale) + .07 ;
-  namePlate.parent = body;
-  return new Teller(body, namePlate, new BABYLON.Vector3(bodyDiameter, bodyHeight, bodyDiameter), name);
-}
+// function createTellerMesh(scene, scale, name) {
+//   var bodyHeight = scale * 0.2;
+//   var bodyDiameter = scale * 0.15;
+//   var body = createTokenBodyMesh(scene, scale, bodyHeight, bodyDiameter);
+//   body.material.diffuseColor = new BABYLON.Color3(18/255, 167/255, 181/255);
+//   var namePlate = createNamePlate(scene, name, scale, BABYLON.Color3.Black().toHexString(), body.material.diffuseColor.toHexString());
+//   namePlate.position = body.position.clone();
+//   namePlate.position.y -= (bodyHeight * scale) + .07 ;
+//   namePlate.parent = body;
+//   return new Teller(body, namePlate, new BABYLON.Vector3(bodyDiameter, bodyHeight, bodyDiameter), name);
+// }
 
 function createCustomerMesh(scene, scale)  {
   var bodyHeight = scale * 0.2;
@@ -288,6 +513,7 @@ function removeCustomer(scene, customer) {
   var noLoop = true;
   //destory mesh after fadeout animation
   var endEvent = new BABYLON.AnimationEvent(triggerFrame, function() {customer.mesh.destroy(); customer = null; }, noLoop);
+  animation.addEvent(endEvent);
   scene.beginAnimation(customer.mesh, 0, 9, false);
   // var frameCount = 10;
   // var valueMin = 1;
@@ -347,57 +573,58 @@ function createPillar(scene, height, material) {
   return pillar;
 }
 
-function createTube(scene, name, material) {
-  var tube = BABYLON.MeshBuilder.CreateTube("tube_" + name, {
-    path: [new BABYLON.Vector3.Zero(), new BABYLON.Vector3.Zero()],
-    cap: BABYLON.Mesh.CAP_ALL,
-    radius: 0.010,
-    tesselation: 3,
-    updatable: true
-  }, scene);
-  tube.material = material;
-  var colorAnimation = new BABYLON.Animation("tubecolorcycle", "material.diffuseColor", 4, BABYLON.Animation.ANIMATIONTYPE_COLOR3, BABYLON.Animation.ANIMATIONLOOPMODE_CYCLE);
-  colorFrames = [];
-  var switchColorDirection =  false;
-  //var color = 6;
-  var color = material.diffuseColor.clone();
-        for (var pos = 0; pos < 9; pos++) {
-          colorFrames.push( { frame: (pos), value: color.clone()});
-          
-          if (pos === 4)
-            switchColorDirection = true;
-          
-          if (switchColorDirection) {
-           color = color.scale(0.9);
-          }
-          else {
-            color = color.scale(1.1);
-          }
-        }
+// function createTube(scene, name, material) {
+//   var tube = BABYLON.MeshBuilder.CreateTube("tube_" + name, {
+//     path: [new BABYLON.Vector3.Zero(), new BABYLON.Vector3.Zero()],
+//     cap: BABYLON.Mesh.CAP_ALL,
+//     radius: 0.010,
+//     tesselation: 3,
+//     updatable: true
+//   }, scene);
+//   tube.material = material;
+//   var colorAnimation = new BABYLON.Animation("tubecolorcycle", "material.diffuseColor", 4, BABYLON.Animation.ANIMATIONTYPE_COLOR3, BABYLON.Animation.ANIMATIONLOOPMODE_CYCLE);
+//   colorFrames = [];
+//   var switchColorDirection =  false;
+//   //var color = 6;
+//   var color = material.diffuseColor.clone();
+
+//   for (var pos = 0; pos < 9; pos++) {
+//     colorFrames.push( { frame: (pos), value: color.clone()});
+    
+//     if (pos === 4)
+//       switchColorDirection = true;
+    
+//     if (switchColorDirection) {
+//      color = color.scale(0.9);
+//     }
+//     else {
+//       color = color.scale(1.1);
+//     }
+//   }
         
-  colorAnimation.setKeys(colorFrames);
-  tube.animations = [];
-  tube.animations.push(colorAnimation);
-  return tube;
-}
+//   colorAnimation.setKeys(colorFrames);
+//   tube.animations = [];
+//   tube.animations.push(colorAnimation);
+//   return tube;
+// }
 
-function setPillarAnimation(circlingObject, positions, fps) {
-  if (positions.length === 0)
-    throw "sphere positions empty";
-  var animation = new BABYLON.Animation("circlingAnimation", "position", fps, BABYLON.Animation.ANIMATIONTYPE_VECTOR3, BABYLON.Animation.ANIMATIONLOOPMODE_CYCLE);
-  var keys = [];
+// function setCirclingAnimation(circlingObject, positions, fps) {
+//   if (positions.length === 0)
+//     throw "sphere positions empty";
+//   var animation = new BABYLON.Animation("circlingAnimation", "position", fps, BABYLON.Animation.ANIMATIONTYPE_VECTOR3, BABYLON.Animation.ANIMATIONLOOPMODE_CYCLE);
+//   var keys = [];
 
-  for (var p = 0; p < positions.length; ++p) {
-    keys.push({
-      frame: p,
-      value: positions[p]
-    });
-  }
+//   for (var p = 0; p < positions.length; ++p) {
+//     keys.push({
+//       frame: p,
+//       value: positions[p]
+//     });
+//   }
   
-  animation.setKeys(keys);
-  circlingObject.animations = [];
-  circlingObject.animations.push(animation);
-}
+//   animation.setKeys(keys);
+//   circlingObject.animations = [];
+//   circlingObject.animations.push(animation);
+// }
 
 function calculateCirclingPositions(centerPosition, radius, startingDegree) {
   var yPos = centerPosition.y;
@@ -424,19 +651,19 @@ function hilightMesh(mesh, scene, name) {
   });
 }
 
-function updateTubePositions(centerPosition, meshs, tubes) {
-  if (meshs.length != tubes.length)
-    throw "meshs and tubes must have the same count";
+// function updateTubePositions(centerPosition, meshs, tubes) {
+//   if (meshs.length != tubes.length)
+//     throw "meshs and tubes must have the same count";
 
-  var updatedTubes = [];
-  for (var p = 0; p < meshs.length; ++p) {
-    var newPath = [centerPosition, meshs[p].mesh.position];
-    var updatedTube = BABYLON.MeshBuilder.CreateTube(null, {
-      path: newPath,
-      instance: tubes[p],
-      cap: BABYLON.Mesh.CAP_ALL,
-      radius: 0.015,
-      tesselation: 3
-    });
-  }
-}
+//   var updatedTubes = [];
+//   for (var p = 0; p < meshs.length; ++p) {
+//     var newPath = [centerPosition, meshs[p].mesh.position];
+//     var updatedTube = BABYLON.MeshBuilder.CreateTube(null, {
+//       path: newPath,
+//       instance: tubes[p],
+//       cap: BABYLON.Mesh.CAP_ALL,
+//       radius: 0.015,
+//       tesselation: 3
+//     });
+//   }
+//}

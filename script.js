@@ -127,8 +127,9 @@ $(document).ready(function(){
   //now we define a render loop
   engine.runRenderLoop(function() {
     scene.render();
-    updateTubePositions(branchWheel.pillar.bottom, branchWheel.atms, branchWheel.atmTubes);
-    updateTubePositions(branchWheel.pillar.top, branchWheel.tellers, branchWheel.tellerTubes);
+    branchWheel.frameUpdate();
+    //updateTubePositions(branchWheel.pillar.bottom, branchWheel.atms, branchWheel.atmTubes);
+    //updateTubePositions(branchWheel.pillar.top, branchWheel.tellers, branchWheel.tellerTubes);
     //tellers[0].animations[0].pause();
   }); //end engine loop
 
